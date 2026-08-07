@@ -34,7 +34,13 @@ end
 % Zaman ekseni ve faz gürültülü DUT taşıyıcı sinyalini üret.
 t = (0:N-1)' / fs;
 quadrature_phase = 2*pi*f0*t + pi/2;
-phase_noise_dut = generate_phase_noise(N, phase_rms_dut);
+if isfield(config, "phase_noise_dut") && ~isempty(config.phase_noise_dut)
+    % Paylaşılmış DUT gürültüsü: taramalar arasında temiz karşılaştırma
+    % için aynı taban sinyal kullanılır (run_comparisons_main üretir).
+    phase_noise_dut = config.phase_noise_dut(:);
+else
+    phase_noise_dut = generate_phase_noise(N, phase_rms_dut);
+end
 x_dut = A*cos(2*pi*f0*t + phase_noise_dut);
 
 % Faz detektörü LPF katsayılarını ve detektör kazancı K_pd = A^2/2'yi hazırla.
