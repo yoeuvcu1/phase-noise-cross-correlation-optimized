@@ -1,59 +1,37 @@
-function summary = test_rms_runs()
-% Farklı DUT RMS değerleri için tekrarlanan testlerin ortalamasını alır.
+function save_figure_to_png(fig, out_png, show_figure)
+% Grafiği PNG olarak kaydeder. show_figure doğruysa ekranda da gösterir,
+% yanlışsa kapar.
+%
+% Not: PNG üretimi qt grafik altyapısıyla (Octave GUI) sorunsuzdur.
+% CLI'de (fltk) görünür pencere açmadan çizim yapılamadığından dosya
+% kaydedilmez; grafikler Octave GUI'den replot_results ile çizilebilir.
+% Bu durumda yalnızca bir kez uyarı verilir, pencere açılmaz.
 
-dut_rms_values = [0.5, 0.2];
-number_of_runs = 20;
+persistent cli_warned;
 
-% Her run için ortak temel parametreler.
-base_config.N = 100000;
-base_config.fs = 1e6;
-base_config.A = 1;
-base_config.f0 = 50e3;
-base_config.settling_samples = 100;
-base_config.lpf_cutoff = 25e3;
-base_config.lpf_order = 4;
-base_config.phase_rms_ref1 = 0.1;
-base_config.phase_rms_ref2 = 0.1;
-base_config.number_of_iterations = 100;
-base_config.number_of_log_bins = 50;
-base_config.show_plot = false;
+toolkits = available_graphics_toolkits();
+has_qt = any(strcmp(toolkits, "qt"));
 
-number_of_rms_values = numel(dut_rms_values);
-absolute_errors_db = zeros(number_of_rms_values, number_of_runs);
-
-% Her RMS değeri için istenen sayıda run yap ve hataları biriktir.
-for rms_index = 1:number_of_rms_values
-    dut_rms = dut_rms_values(rms_index);
-    fprintf("\n=== DUT RMS: %.3f rad ===\n", dut_rms);
-
-    for run_index = 1:number_of_runs
-        fprintf("Run %d/%d\n", run_index, number_of_runs);
-
-        config = base_config;
-        config.phase_rms_dut = dut_rms;
-        run_results = main(config);
-
-        absolute_errors_db(rms_index, run_index) = ...
-            run_results.mean_absolute_error_fft_db;
+saved = false;
+if has_qt
+    try
+        print(fig, out_png, "-dpng", "-r150");
+        saved = isfile(out_png);
+    catch err
+        warning("PNG kaydedilemedi: %s", err.message);
     end
-
-    fprintf("DUT RMS %.3f rad icin ortalama mutlak hata: %.3f dB\n", ...
-        dut_rms, mean(absolute_errors_db(rms_index, :)));
+elseif isempty(cli_warned)
+    cli_warned = true;
+    warning( ...
+        ["CLI modunda pencere acilmadan PNG uretilemiyor; grafikler ", ...
+         "atlaniyor. PNG'ler icin betigi Octave GUI'den calistirin ", ...
+         "veya sonradan replot_results kullanin."]);
 end
 
-% Sonuçları özet yapısında topla.
-summary.dut_rms_values = dut_rms_values;
-summary.absolute_errors_db = absolute_errors_db;
-summary.mean_absolute_errors_db = mean(absolute_errors_db, 2);
-summary.number_of_runs = number_of_runs;
-
-% Test özetini ekrana yazdır.
-fprintf("\n=== TEST OZETI ===\n");
-for rms_index = 1:number_of_rms_values
-    fprintf("DUT RMS %.3f rad: %.3f dB ortalama mutlak hata (%d run)\n", ...
-        dut_rms_values(rms_index), ...
-        summary.mean_absolute_errors_db(rms_index), ...
-        number_of_runs);
+if show_figure && saved
+    set(fig, "visible", "on");
+else
+    close(fig);
 end
 
 end
