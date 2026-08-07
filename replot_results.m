@@ -11,8 +11,9 @@
 % koşturulursa grafikler atlanır ve uyarı verilir.
 %
 % AYARLAR:
-%   RESULTS_SUBFOLDER boş ise en son koşu klasörü kullanılır. Belirli bir
-%   koşuyu çizmek için zaman damgalı klasör adını yazın, örnek:
+%   RESULTS_SUBFOLDER boş ise results/ altındaki TÜM koşu klasörleri
+%   çizilir (her test için ayrı plot). Belirli bir koşuyu çizmek için
+%   zaman damgalı klasör adını yazın, örnek:
 %       RESULTS_SUBFOLDER = "20260807_123456_lpf_cutoff";
 % =====================================================================
 
@@ -60,7 +61,27 @@ end
 cd(mirror_dir);
 addpath(mirror_dir);
 
-replot_results_main(RESULTS_SUBFOLDER, SHOW_FIGURES, project_dir);
+% Boş bırakılırsa tüm koşu klasörlerini, doluysa yalnızca belirtileni çiz.
+results_root = fullfile(project_dir, "results");
+if isempty(RESULTS_SUBFOLDER)
+    subfolders = {};
+    root_entries = dir(results_root);
+    for entry_index = 1:numel(root_entries)
+        if root_entries(entry_index).isdir && ...
+                ~strcmp(root_entries(entry_index).name, ".") && ...
+                ~strcmp(root_entries(entry_index).name, "..")
+            subfolders{end+1} = root_entries(entry_index).name;
+        end
+    end
+    if isempty(subfolders)
+        error("results klasorunde kosu bulunamadi: %s", results_root);
+    end
+    for subfolder_index = 1:numel(subfolders)
+        fprintf("\n=== COZULUYOR: %s ===\n", subfolders{subfolder_index});
+        replot_results_main(subfolders{subfolder_index}, SHOW_FIGURES, project_dir);
+    end
+else
+    replot_results_main(RESULTS_SUBFOLDER, SHOW_FIGURES, project_dir);
+end
 
-fprintf("\nHazir. Grafikler: %s\n", ...
-    fullfile(project_dir, "results", RESULTS_SUBFOLDER));
+fprintf("\nHazir. Grafikler: %s\n", results_root);
