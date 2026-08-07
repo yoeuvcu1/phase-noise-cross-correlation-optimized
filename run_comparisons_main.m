@@ -143,12 +143,22 @@ mean_absolute_error_db = zeros(1, number_of_values);
 correction_factors = zeros(1, number_of_values);
 elapsed_seconds = zeros(1, number_of_values);
 
+% Bu tarama için tek bir DUT taban gürültüsü üret (varsayılan RMS ile).
+% Tüm koşullar bu SINYALİ paylaşır; sadece LPF kesim frekansı değişirse
+% DUT FFT grafiği filtrelenerek değişir (farklı LPF grafiği olur ama
+% aynı taban gürültüsünden gelir). Bu sayede karşılaştırma grafikleri
+% temiz ve karşılaştırılabilir olur.
+sweep_dut_noise = config_template.phase_rms_dut * ...
+    generate_phase_noise(config_template.N, 1);
+
 fprintf("\n=== TARAMA: %s ===\n", sweep_name);
 for value_index = 1:number_of_values
     value = values(value_index);
 
     config = config_template;
     config.(value_field) = value;
+    % Tüm koşullara AYNI DUT gürültüsünü geçir (tek taban sinyal).
+    config.phase_noise_dut = sweep_dut_noise;
 
     run_timer = tic;
     current_results = main(config);
