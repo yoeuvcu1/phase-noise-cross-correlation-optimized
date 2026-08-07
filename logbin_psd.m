@@ -1,23 +1,16 @@
 function [f_binned, P_binned, bin_edges, bin_counts] = logbin_psd(f, P, num_bins)
-%LOGBIN_PSD  Logarithmic binning of PSD data
-%   [f_binned, P_binned, bin_edges, bin_counts] = logbin_psd(f, P, num_bins)
-%   Bins PSD data (f, P) into num_bins logarithmically spaced bins.
-%   Returns geometric mean frequency and arithmetic mean power per bin.
-%
-%   f: frequency vector (Hz)
-%   P: power vector (linear scale, not dB)
-%   num_bins: number of log-spaced bins (default 100)
+% PSD verisini logaritmik aralıklarda ortalayarak seyreltir.
 
 if nargin < 3
     num_bins = 100;
 end
 
-% Keep only positive frequencies
+% Sıfır ve negatif frekansları at.
 valid = f > 0;
 f = f(valid);
 P = P(valid);
 
-% Log-spaced bin edges
+% Logaritmik eş aralıklı bin kenarlarını oluştur.
 f_min = min(f);
 f_max = max(f);
 bin_edges = logspace(log10(f_min), log10(f_max), num_bins + 1);
@@ -26,29 +19,30 @@ f_binned = zeros(num_bins, 1);
 P_binned = zeros(num_bins, 1);
 bin_counts = zeros(num_bins, 1);
 
-for i = 1:num_bins
-    mask = f >= bin_edges(i) & f < bin_edges(i+1);
-    if i == num_bins
-        mask = f >= bin_edges(i) & f <= bin_edges(i+1);
+% Her bin için frekans (geometrik ortalama) ve güç (aritmetik ortalama) al.
+for bin_index = 1:num_bins
+    mask = f >= bin_edges(bin_index) & f < bin_edges(bin_index + 1);
+    if bin_index == num_bins
+        mask = f >= bin_edges(bin_index) & f <= bin_edges(bin_index + 1);
     end
 
     count = sum(mask);
-    bin_counts(i) = count;
+    bin_counts(bin_index) = count;
 
     if count > 0
-        f_binned(i) = exp(mean(log(f(mask))));  % geometric mean
-        P_binned(i) = mean(P(mask));            % arithmetic mean (linear power)
+        f_binned(bin_index) = exp(mean(log(f(mask))));
+        P_binned(bin_index) = mean(P(mask));
     else
-        f_binned(i) = NaN;
-        P_binned(i) = NaN;
+        f_binned(bin_index) = NaN;
+        P_binned(bin_index) = NaN;
     end
 end
 
-% Remove empty bins
+% Boş kalan binleri sonuçtan çıkar.
 valid_bins = ~isnan(f_binned);
 f_binned = f_binned(valid_bins);
 P_binned = P_binned(valid_bins);
-bin_edges = bin_edges(1:end-1);  % keep left edges for valid bins
+bin_edges = bin_edges(1:end-1);
 bin_edges = bin_edges(valid_bins);
 bin_counts = bin_counts(valid_bins);
 
