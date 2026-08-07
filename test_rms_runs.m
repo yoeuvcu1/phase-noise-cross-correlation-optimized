@@ -1,10 +1,11 @@
 function summary = test_rms_runs()
-%TEST_RMS_RUNS Average FFT errors over repeated DUT RMS tests.
+% Farklı DUT RMS değerleri için tekrarlanan testlerin ortalamasını alır.
 
 dut_rms_values = [0.5, 0.2];
 number_of_runs = 20;
 
-base_config.N = 10000;
+% Her run için ortak temel parametreler.
+base_config.N = 1000000;
 base_config.fs = 1e6;
 base_config.A = 1;
 base_config.f0 = 50e3;
@@ -13,13 +14,14 @@ base_config.lpf_cutoff = 25e3;
 base_config.lpf_order = 4;
 base_config.phase_rms_ref1 = 0.1;
 base_config.phase_rms_ref2 = 0.1;
-base_config.number_of_iterations = 500;
+base_config.number_of_iterations = 100;
 base_config.number_of_log_bins = 50;
 base_config.show_plot = false;
 
 number_of_rms_values = numel(dut_rms_values);
 absolute_errors_db = zeros(number_of_rms_values, number_of_runs);
 
+% Her RMS değeri için istenen sayıda run yap ve hataları biriktir.
 for rms_index = 1:number_of_rms_values
     dut_rms = dut_rms_values(rms_index);
     fprintf("\n=== DUT RMS: %.3f rad ===\n", dut_rms);
@@ -39,11 +41,13 @@ for rms_index = 1:number_of_rms_values
         dut_rms, mean(absolute_errors_db(rms_index, :)));
 end
 
+% Sonuçları özet yapısında topla.
 summary.dut_rms_values = dut_rms_values;
 summary.absolute_errors_db = absolute_errors_db;
 summary.mean_absolute_errors_db = mean(absolute_errors_db, 2);
 summary.number_of_runs = number_of_runs;
 
+% Test özetini ekrana yazdır.
 fprintf("\n=== TEST OZETI ===\n");
 for rms_index = 1:number_of_rms_values
     fprintf("DUT RMS %.3f rad: %.3f dB ortalama mutlak hata (%d run)\n", ...
