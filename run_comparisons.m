@@ -30,10 +30,16 @@ project_dir = fileparts(mfilename("fullpath"));
 mirror_dir = fullfile(tempdir(), "octave_pd_mirror");
 
 % .m dosyalarını yerel yansımaya kopyala (ağ yolundan yüklenemezler).
-if exist(mirror_dir, "dir")
-    rmdir(mirror_dir, "s");
+% Eski dosyaları unlink ile sessizce temizle (GUI onay penceresi açmaz).
+if ~exist(mirror_dir, "dir")
+    mkdir(mirror_dir);
 end
-mkdir(mirror_dir);
+mirror_entries = dir(mirror_dir);
+for mirror_index = 1:numel(mirror_entries)
+    if ~mirror_entries(mirror_index).isdir
+        unlink(fullfile(mirror_dir, mirror_entries(mirror_index).name));
+    end
+end
 project_entries = dir(project_dir);
 for entry_index = 1:numel(project_entries)
     entry = project_entries(entry_index);
