@@ -1,5 +1,5 @@
 function mask = valid_freq_mask(f, f_max, f_min)
-%VALID_FREQ_MASK Select frequencies in the interval (f_min, f_max].
+% (f_min, f_max] aralığındaki frekanslar için mantıksal maske döndürür.
 
 if nargin < 3
     f_min = 0;
