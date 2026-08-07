@@ -1,5 +1,5 @@
 function [f_binned, L_binned] = bin_and_convert(f, P, num_bins)
-%BIN_AND_CONVERT Log-bin a linear PSD and convert it to SSB phase noise.
+% Doğrusal PSD'yi log-binler ve SSB dBc/Hz birimine çevirir.
 
 if nargin < 3
     num_bins = 80;
