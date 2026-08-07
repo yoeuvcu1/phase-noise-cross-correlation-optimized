@@ -1,6 +1,7 @@
 function L = psd_to_ssb(P)
-%PSD_TO_SSB Convert single-sided phase PSD to SSB phase noise in dBc/Hz.
+% Tek taraflı faz PSD'sini dBc/Hz cinsinden SSB faz gürültüsüne çevirir.
 
+% L = 10*log10(P/2) formülü ile tek yan bant değerine dön (realmin log güvenliği).
 L = 10*log10(0.5*P + realmin);
 
 end
