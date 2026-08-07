@@ -15,7 +15,7 @@ function run_comparisons_main(show_figures, project_dir)
 % Bu bölümdeki değerleri düzenleyerek koşuyu değiştirebilirsiniz.
 
 % Sabit parametreler (tüm taramalarda ortak)
-defaults.N = 10000;                  % Toplam örnek sayısı (test: 10000, gerçek sim: 1M)
+defaults.N = 100000;                 % Toplam örnek sayısı (test: 100000, gerçek sim: 1M)
 defaults.fs = 1e6;                   % Örnekleme frekansı (Hz)
 defaults.A = 1;                      % Taşıyıcı genliği
 defaults.f0 = 50e3;                  % Taşıyıcı frekansı (Hz)
@@ -81,7 +81,7 @@ if sweep_enabled.rms_dut
 end
 if sweep_enabled.rms_ref
     sweep_specs{end+1} = struct("name", "rms_ref", "field", "phase_rms_ref1", ...
-        "values", sweep_values.rms_ref, "label_fmt", "ref = %.2f rad", ...
+        "values", sweep_values.rms_ref, "label_fmt", "Ref = %.2f rad", ...
         "default", defaults.phase_rms_ref);
 end
 if sweep_enabled.iterations
