@@ -2,7 +2,7 @@ function summary = test_rms_runs()
 %TEST_RMS_RUNS Average FFT errors over repeated DUT RMS tests.
 
 dut_rms_values = [0.5, 0.2];
-number_of_runs = 10;
+number_of_runs = 20;
 
 base_config.N = 10000;
 base_config.fs = 1e6;
@@ -11,8 +11,8 @@ base_config.f0 = 50e3;
 base_config.settling_samples = 100;
 base_config.lpf_cutoff = 25e3;
 base_config.lpf_order = 4;
-base_config.phase_rms_ref1 = 0.05;
-base_config.phase_rms_ref2 = 0.05;
+base_config.phase_rms_ref1 = 0.1;
+base_config.phase_rms_ref2 = 0.1;
 base_config.number_of_iterations = 500;
 base_config.number_of_log_bins = 50;
 base_config.show_plot = false;
