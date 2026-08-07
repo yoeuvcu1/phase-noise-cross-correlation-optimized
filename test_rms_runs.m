@@ -5,7 +5,7 @@ dut_rms_values = [0.5, 0.2];
 number_of_runs = 20;
 
 % Her run için ortak temel parametreler.
-base_config.N = 1000000;
+base_config.N = 100000;
 base_config.fs = 1e6;
 base_config.A = 1;
 base_config.f0 = 50e3;
