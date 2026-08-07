@@ -3,9 +3,12 @@
 % Kaydedilmiş ham verilerden (.mat) grafikleri yeniden çizer.
 % Simülasyonu yeniden koşturmaz; ham veriler results/ klasöründen okunur.
 %
-% Ağ sürücüsü notu ve çalıştırma biçimi run_comparisons.m ile aynıdır:
+% Çalıştırma biçimi ve ağ sürücüsü notu run_comparisons.m ile aynıdır:
 %   run("O:\phasedetector with cross correlation optimized\replot_results.m")
 %   veya CLI'den: octave-cli "O:\...\replot_results.m"
+%
+% Not: PNG üretimi qt altyapısı (Octave GUI) gerektirir; CLI'den
+% koşturulursa grafikler atlanır ve uyarı verilir.
 %
 % AYARLAR:
 %   RESULTS_SUBFOLDER boş ise en son koşu klasörü kullanılır. Belirli bir
@@ -18,8 +21,40 @@ SHOW_FIGURES = true;   % karşılaştırma grafiğini ekranda göster
 
 project_dir = fileparts(mfilename("fullpath"));
 mirror_dir = fullfile(tempdir(), "octave_pd_mirror");
-prepare_mirror(project_dir, mirror_dir);
+
+% .m dosyalarını yerel yansımaya kopyala (ağ yolundan yüklenemezler).
+if exist(mirror_dir, "dir")
+    rmdir(mirror_dir, "s");
+end
+mkdir(mirror_dir);
+project_entries = dir(project_dir);
+for entry_index = 1:numel(project_entries)
+    entry = project_entries(entry_index);
+    if entry.isdir || length(entry.name) < 3
+        continue;
+    end
+    if ~strcmp(entry.name(end-1:end), ".m")
+        continue;
+    end
+    launcher_source_id = fopen(fullfile(project_dir, entry.name), "rb");
+    launcher_target_id = fopen(fullfile(mirror_dir, entry.name), "wb");
+    if launcher_source_id < 0 || launcher_target_id < 0
+        error("Yansima kopyalanamadi: %s", entry.name);
+    end
+    while ~feof(launcher_source_id)
+        launcher_chunk = fread(launcher_source_id, 65536, "uint8");
+        if isempty(launcher_chunk)
+            break;
+        end
+        fwrite(launcher_target_id, launcher_chunk, "uint8");
+    end
+    fclose(launcher_source_id);
+    fclose(launcher_target_id);
+end
 cd(mirror_dir);
 addpath(mirror_dir);
 
 replot_results_main(RESULTS_SUBFOLDER, SHOW_FIGURES, project_dir);
+
+fprintf("\nHazir. Grafikler: %s\n", ...
+    fullfile(project_dir, "results", RESULTS_SUBFOLDER));
