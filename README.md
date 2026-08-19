@@ -24,3 +24,15 @@ ayarları düzenleyip dosyayı Octave GUI'den çalıştırın.
 ```matlab
 run_single
 ```
+
+Yalnız iterasyon sayısını taramak için `run_iterations.m` içindeki sabit
+parametreleri ve `iteration_values` listesini düzenleyip çalıştırın:
+
+```matlab
+run_iterations
+```
+
+Her iterasyonda yeni DUT, Ref1 ve Ref2 faz gürültüsü realizasyonları üretilir.
+Grafikteki DUT referansı bu realizasyonların lineer periodogram ortalamasıdır;
+tam çözünürlüklü ortalama `raw/*.mat` içindeki
+`current_results.dut_fft.psd` alanında saklanır.
