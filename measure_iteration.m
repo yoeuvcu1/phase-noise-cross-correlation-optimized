@@ -3,7 +3,7 @@ function S_cross_iteration = measure_iteration( ...
     phase_rms_ref1, phase_rms_ref2, ...
     b_lpf, a_lpf, K_pd, settling_samples, fs, nfft_cross)
 % Tek bir iterasyonda iki referansla cross-PSD ölçümünü döndürür.
-% x_dut run boyunca sabittir; bu çağrıda Ref1/Ref2 yeniden üretilir.
+% x_dut bu iterasyona aittir; bu çağrıda Ref1/Ref2 yeniden üretilir.
 % Çıktı kompleks tek taraflı cross spektrumdur ve run_simulation tarafından
 % diğer iterasyonlarla kompleks olarak ortalanır.
 
