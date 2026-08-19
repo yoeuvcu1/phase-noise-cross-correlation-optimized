@@ -1,9 +1,9 @@
 function results = run_simulation(config)
 % Cross-PSD faz gürültüsü simülasyonunu çalıştıran ana işlev.
 %
-% Aynı DUT sinyali, number_of_iterations boyunca yeni Ref1/Ref2 çiftleriyle
-% ölçülür. Dönen results yapısında düzeltilmiş Cross-PSD, DUT periodogramı,
-% log-binlenmiş eğriler, correction factor ve iki eğrinin MAE değeri bulunur.
+% Her iterasyonda yeni DUT ve Ref1/Ref2 realizasyonları üretilir. Dönen results
+% yapısında ortalama Cross-PSD, ortalama DUT periodogramı, log-binlenmiş eğriler,
+% correction factor ve iki ortalama eğrinin MAE değeri bulunur.
 
 % Octave'de signal paketini yalnızca bir kez yükle.
 persistent signal_package_loaded;
@@ -29,12 +29,11 @@ phase_rms_ref2 = config.phase_rms_ref2;
 number_of_iterations = config.number_of_iterations;
 number_of_log_bins = config.number_of_log_bins;
 
-% DUT faz gürültüsü bu run boyunca sabittir; yalnızca referanslar iterasyondan
-% iterasyona yenilenir. Böylece kanalların ortak bileşeni DUT olur.
+% Taşıyıcı zaman tabanı ve referansların quadrature merkez fazı bütün
+% iterasyonlarda aynıdır; rastgele DUT/Ref faz realizasyonları döngüde yenilenir.
 t = (0:N-1)' / fs;
-quadrature_phase = 2*pi*f0*t + pi/2;
-phase_noise_dut = generate_phase_noise(N, phase_rms_dut);
-x_dut = A*cos(2*pi*f0*t + phase_noise_dut);
+carrier_phase = 2*pi*f0*t;
+quadrature_phase = carrier_phase + pi/2;
 
 % Taşıyıcı çarpımından gelen yüksek frekanslı bileşeni bastıracak LPF'yi ve
 % faz detektörü çıkışını rad cinsine ölçekleyen K_pd = A^2/2 kazancını hazırla.
@@ -51,11 +50,17 @@ nfft_cross = 2^nextpow2(2*channel_length - 1);
 number_of_positive_points = floor(nfft_cross/2) + 1;
 f_cross = (0:number_of_positive_points-1)' * fs / nfft_cross;
 S_cross_sum = complex(zeros(number_of_positive_points, 1));
+S_dut_sum = zeros(number_of_positive_points, 1);
 
 % Kompleks cross spektrumlar önce toplanır, magnitude işlemi ortalamadan sonra
 % yapılır; böylece korelasyonsuz referans bileşenlerinin iptali korunur.
 for iteration = 1:number_of_iterations
     iteration_timer = tic;
+
+    % Aynı fiziksel DUT modelinin yeni zaman realizasyonunu oluştur. Bu kayıt iki
+    % ölçüm kanalında ortak, Ref1/Ref2 ise birbirinden bağımsız bileşenlerdir.
+    phase_noise_dut = generate_phase_noise(N, phase_rms_dut);
+    x_dut = A*cos(carrier_phase + phase_noise_dut);
 
     S_cross_current = measure_iteration( ...
         x_dut, A, quadrature_phase, ...
@@ -64,25 +69,31 @@ for iteration = 1:number_of_iterations
 
     S_cross_sum = S_cross_sum + S_cross_current;
 
+    % Cross-PSD ile aynı kayıt bölümüne ait filtresiz DUT periodogramını lineer
+    % güç alanında topla. dB eğrilerini değil PSD'leri ortalamak gerekir.
+    phase_noise_dut_compare = phase_noise_dut(settling_samples + 1:end);
+    phase_noise_dut_compare = remove_dc(phase_noise_dut_compare);
+    [~, S_dut_current] = compute_periodogram( ...
+        phase_noise_dut_compare, fs, nfft_cross);
+    S_dut_sum = S_dut_sum + S_dut_current;
+
     iteration_seconds = toc(iteration_timer);
     fprintf("\rIterasyon %d/%d | Iterasyon suresi: %.3f s", ...
         iteration, number_of_iterations, iteration_seconds);
 end
 fprintf("\n");
 
-% DC karşılaştırmaya dahil edilmez; LPF cutoff üzerindeki frekanslar da ölçüm
-% modelinin geçerli bandının dışında olduğu için atılır.
+% DC karşılaştırmaya dahil edilmez. LPF etkisi ayrıca frekans maskesiyle
+% gizlenmez; Cross-PSD'nin bütün pozitif frekansları korunur.
 S_cross_average = S_cross_sum / number_of_iterations;
-valid_cross = f_cross > 0 & f_cross <= lpf_cutoff;
+valid_cross = f_cross > 0;
 
-% Bağımsız Gaussian referanslar Cross-PSD gücünü
-% exp(-0.5*(sigma_ref1^2 + sigma_ref2^2)) kadar bastırır. Bu bastırmayı
-% hesaba katarak sinüzoidal faz detektörünün güç sıkışmasını geri al.
+% Ölçülen Cross-PSD gücünden sinüzoidal faz detektörünün güç sıkışmasını
+% geri al.
 min_log_argument = 1e-10;
 frequency_step = f_cross(2) - f_cross(1);
 total_power_sin = sum(abs(S_cross_average(valid_cross))) * frequency_step;
-reference_attenuation = exp(-0.5 * (phase_rms_ref1^2 + phase_rms_ref2^2));
-log_argument = 1 - 2*total_power_sin/reference_attenuation;
+log_argument = 1 - 2*total_power_sin;
 sigma2_est = -0.5 * log(max(log_argument, min_log_argument));
 
 % Güç veya tahmin sıfırsa spektrumu değiştirmemek için correction=1 kullan.
@@ -98,16 +109,11 @@ S_cross_corrected = S_cross_average * correction_factor;
     abs(S_cross_corrected(valid_cross)), ...
     number_of_log_bins);
 
-% Referans eğriyi adil karşılaştırmak için gerçek DUT fazı da ölçüm kanallarıyla
-% aynı LPF ve settling işleminden geçirilir.
-phase_noise_dut_filtered = filter(b_lpf, a_lpf, phase_noise_dut);
-phase_noise_dut_compare = phase_noise_dut_filtered(settling_samples + 1:end);
-phase_noise_dut_compare = remove_dc(phase_noise_dut_compare);
-
-% DUT faz gürültüsünün periodogramını (FFT) hesapla.
-[f_dut_fft, S_dut_fft] = compute_periodogram( ...
-    phase_noise_dut_compare, fs, nfft_cross);
-valid_dut_fft = f_dut_fft > 0 & f_dut_fft <= lpf_cutoff;
+% Her iterasyondaki filtresiz DUT periodogramının lineer ortalamasını kullan.
+% Tam çözünürlüklü bu ortalama results ile birlikte raw MAT dosyasına kaydedilir.
+f_dut_fft = f_cross;
+S_dut_fft = S_dut_sum / number_of_iterations;
+valid_dut_fft = f_dut_fft > 0;
 [f_dut_fft_binned, L_dut_fft_binned] = logbin_phase_noise( ...
     f_dut_fft(valid_dut_fft), ...
     S_dut_fft(valid_dut_fft), ...
@@ -141,7 +147,7 @@ mean_absolute_error_fft_db = mean( ...
     abs(L_cross_interp(valid_common) - L_dut_fft_interp(valid_common)));
 
 % Ölçüm hata metnini ekrana yaz.
-fprintf("Ortalama mutlak fark (Cross-PSD - DUT periodogram): %.3f dB\n", ...
+fprintf("Ortalama mutlak fark (Cross-PSD - unfiltered DUT): %.3f dB\n", ...
     mean_absolute_error_fft_db);
 
 % Tam çözünürlüklü spektrumlar replot/inceleme için, binned alanlar doğrudan
@@ -157,5 +163,7 @@ results.dut_fft.frequency = f_dut_fft;
 results.dut_fft.psd = S_dut_fft;
 results.dut_fft.frequency_binned = f_dut_fft_binned;
 results.dut_fft.phase_noise_binned = L_dut_fft_binned;
+results.dut_fft.number_of_averages = number_of_iterations;
+results.dut_fft_unfiltered = results.dut_fft;
 
 end
